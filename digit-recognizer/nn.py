@@ -26,11 +26,11 @@ class NN:
     def ff(self, x, b=1.0):
         self.ai = x #np.concatenate((x, np.array([b])), axis=0)
         #hidden activations
-        t = self.wh.dot(self.ai)
+        t = 1.0 + self.wh.dot(self.ai)
         self.ah = sigmoid(t)#sigmoid(np.concatenate((t, np.array([b]))))
 
         #output activations
-        a = self.wo.dot(self.ah)
+        a = 1.0 + self.wo.dot(self.ah)
         self.ao = sigmoid( a )
         return self.ao
 
@@ -128,10 +128,10 @@ for i in range(len(trainy)):
 	ty.append(np.array(test))
 trainy = np.array(ty)
 trainx /= 255.0
+testx /= 255.0
 
 nn.train(trainx, trainy, epochs=10)
 
 results = nn.predict(testx)
 results = pd.DataFrame({'ImageId':[i+1 for i in range(len(testx))], 'Label':results})
-print (results)
 results.to_csv('results.csv', index=False)
