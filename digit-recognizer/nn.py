@@ -11,26 +11,27 @@ class NN:
         self.ni = ni
         self.nh = nh
         self.no = no
+        self.biases=np.ones((2,1))
 
         self.ai = np.zeros((ni,1))
         self.ah = np.zeros((nh,1))
         self.ao = np.zeros((no,1))
 
-        self.wh = np.random.uniform(low=-1.0, high=1.0, size=(self.nh, self.ni+1))
-        self.wo = np.random.uniform(low=-1.0, high=1.0, size=(self.no, self.nh+1))
+        self.wh = np.random.uniform(low=-1.0, high=1.0, size=(self.nh, self.ni))
+        self.wo = np.random.uniform(low=-1.0, high=1.0, size=(self.no, self.nh))
 
         self.ch = np.zeros((self.nh, self.ni))
         self.co = np.zeros((self.no, self.nh))
 
     def ff(self, x, b=1.0):
-        self.ai = np.concatenate((x, np.array([b])), axis=0)
+        self.ai = x #np.concatenate((x, np.array([b])), axis=0)
         #hidden activations
         t = self.wh.dot(self.ai)
-        self.ah = sigmoid(np.concatenate((t, np.array([b]))))
+        self.ah = sigmoid(t)#sigmoid(np.concatenate((t, np.array([b]))))
 
         #output activations
         a = self.wo.dot(self.ah)
-        self.ao = sigmoid(a)
+        self.ao = sigmoid( a )
         return self.ao
 
     def predict(self, x):
@@ -59,10 +60,17 @@ class NN:
         dzj = dzj.reshape(len(dzj),1)
 
         #hidden layer errors
-        herror = self.wo.T.dot(dzj)
+        herror = dzj.T.dot(self.wo)
         self.ah = ah = self.ah.reshape(len(self.ah),1)
-        dyi = dsigmoid(self.ah) * herror
+        #dyi = dsigmoid(self.ah) * herror.T
         #dyi = dyi.reshape(len(dyi),1)
+        dyi = np.zeros(self.nh)
+        for i in range(self.nh):
+			error = 0.0
+			for  k in range(self.no):
+				error += dzj[k] * self.wo[k][i]
+			dyi[i] = dsigmoid(self.ah[i]) * error
+        dyi = dyi.reshape(len(dyi),1)
 
         #weight gradients: output first, then hidden
         """print ('dzj : ',end='')
@@ -74,9 +82,11 @@ class NN:
         print ('wo : ',end='')
         print (self.wo.shape)"""
         wo_grad += dzj.dot(ah.T)
+        self.wo += wo_grad
 
         ai = self.ai.reshape(len(self.ai),1).T
-        wh_grad += dyi[0:self.nh].dot(ai)
+        wh_grad += dyi.dot(ai)
+        self.wh += wh_grad
 
     def train(self, x, y, lr=0.01, epochs=24, batch=100):
         print("Training Network")
@@ -91,17 +101,13 @@ class NN:
 			print (str(i+1) + "/" + str(epochs) + " Epochs ")
 			for i in range(len(xtrain)):
 				print (str(i) + "/" + str(len(xtrain)), end="\r")
-				wh_grad = np.zeros((self.nh,self.ni+1))
-				wo_grad = np.zeros((self.no,self.nh+1))
+				wh_grad = np.zeros((self.nh,self.ni))
+				wo_grad = np.zeros((self.no,self.nh))
 				self.bp(xtrain[i], ytrain[i], wh_grad, wo_grad)
 				self.wh += -1 * (1/len(xtrain)) * np.multiply(lr, wh_grad)
 				self.wo += -1 * (1/len(xtrain)) * np.multiply(lr, wo_grad)
 			shuffle = np.random.permutation(xtrain.shape[0])
 			xtrain,ytrain = xtrain[shuffle], ytrain[shuffle]
-			"""mini_batches = [xtrain[i:i+batch] for k in range(0, len(xtrain), batch)]
-			mini_y = [ytrain[i] for i in range(0, len(ytrain), batch)]
-			for mini_batch in mini_batches:
-				self.batch_calculate(mini_batch, mini_y)"""
 
         np.savetxt('wh.o', self.wh)
         np.savetxt('wo.o', self.wo)
