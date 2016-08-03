@@ -1,8 +1,6 @@
 from keras.models import Sequential
-from keras.layers import Input, Dense, Activation
+from keras.layers import Input, Dense, Activation, Dropout
 from keras.optimizers import SGD
-import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
 import numpy as np
 import pandas as pd
 
@@ -30,14 +28,17 @@ model = Sequential([
 	Activation('sigmoid'),
 	Dense(24),
 	Activation('sigmoid'),
+	Dropout(0.2),
 	Dense(10),
 	Activation('sigmoid')
 ])
 
-model.compile(loss='categorical_crossentropy', optimizer=SGD(lr=0.01, momentum=0.9, nesterov=True))
-model.fit(trainx, trainy, batch_size=100, nb_epoch=5, validation_data=(testx, testy))
+model.compile(loss='categorical_crossentropy', optimizer=SGD(lr=0.01, momentum=0.9, nesterov=True), metrics=['accuracy'])
+model.fit(trainx, trainy, batch_size=100, nb_epoch=15, validation_data=(testx, testy))
 evals = model.evaluate(testx, testy, verbose=0)
-print "\nTest score:" + str(model.metrics_names)
+print "\nTest accuracy:" + str(evals[1])
 print "predicting"
 results = model.predict_classes(finalx, batch_size=32)
-print results
+results_file = pd.DataFrame({'ImageId':[i+1 for i in range(len(results))], 'Label':results})
+results_file.to_csv('results.csv', index=False)
+print results_file
