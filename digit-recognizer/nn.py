@@ -16,8 +16,8 @@ class NN:
         self.ah = np.zeros((nh,1))
         self.ao = np.zeros((no,1))
 
-        self.wh = np.random.rand(self.nh, self.ni+1)
-        self.wo = np.random.rand(self.no, self.nh+1)
+        self.wh = np.random.uniform(low=-1.0, high=1.0, size=(self.nh, self.ni+1))
+        self.wo = np.random.uniform(low=-1.0, high=1.0, size=(self.no, self.nh+1))
 
         self.ch = np.zeros((self.nh, self.ni))
         self.co = np.zeros((self.no, self.nh))
@@ -25,87 +25,87 @@ class NN:
     def ff(self, x, b=1.0):
         self.ai = np.concatenate((x, np.array([b])), axis=0)
         #hidden activations
-        self.wh[:,len(self.wh)-1] = np.ones(len(self.wh))
         t = self.wh.dot(self.ai)
-        self.ah = np.concatenate((sigmoid(t), np.array([b])))
+        self.ah = sigmoid(np.concatenate((t, np.array([b]))))
 
         #output activations
-        self.wo[:,len(self.wo)-1] = np.ones(len(self.wo))
         a = self.wo.dot(self.ah)
-        self.ao = np.sigmoid(a)
+        self.ao = sigmoid(a)
         return self.ao
 
+    def predict(self, x):
+		results = []
+		for i in x:
+			results.append(np.argmax(self.ff(i)))
+		return np.array(results)
+
+    def evaluate(self, x, y):
+		results = self.predict(x)
+		print (results)
+		loss = 0.0
+		right = 0.0
+		for i in range(len(results)):
+			if results[i] == np.argmax(y[i]):
+				right += 1.0
+		accuracy = right / len(results)
+		print ("accuracy : " + str(accuracy))
+
     def bp(self, x, y, wh_grad, wo_grad):
-        #N = learning rate
-		#M = Momentum
         nn_out = self.ff(x)
 
         #output layer errors
-        dzj = np.zeros((self.no,1))#[0.0] * self.no
-        outerror = y.T - self.ao
+        outerror = y - self.ao
         dzj = dsigmoid(self.ao) * outerror
-        #for i in range(self.no):
-       # 	error = y[i]-self.ao[i]
-       # 	dzj[i] = dsigmoid(self.ao[i]) * error
+        dzj = dzj.reshape(len(dzj),1)
 
         #hidden layer errors
-        dyi = np.zeros((self.nh,1))#[0.0] * self.nh
-        herror = dzj.dot(self.wo)
-        dyi = dsigmoid(self.ah[0:self.nh:]) * herror[0:self.nh]
-        #for i in range(self.nh):
-        #    error = 0.0
-        #    for j in range(self.no):
-        #        error += dzj[j] * self.wh[i][j]
-        #    dyi[i] = dsigmoid(self.ah[i]) * error
+        herror = self.wo.T.dot(dzj)
+        self.ah = ah = self.ah.reshape(len(self.ah),1)
+        dyi = dsigmoid(self.ah) * herror
+        #dyi = dyi.reshape(len(dyi),1)
 
-        #update weights output first, then hidden
-        ah = self.ah.reshape(len(self.ah),1).T
-        dzj = dzj.reshape(len(dzj), 1)
-        wo_grad += dzj.dot(ah)
-        """for i in range(self.no):
-            for j in range(self.nh):
-				change = dzj[i] * self.ah[j]
-				self.wo[i][j] -= 0.01 * change #+ M * self.co[i][j]
-				self.co[i][j] = change"""
+        #weight gradients: output first, then hidden
+        """print ('dzj : ',end='')
+        print (dzj.shape)
+        print ('dyi : ',end='')
+        print (dyi.shape)
+        print ('wh : ',end='')
+        print (self.wh.shape)
+        print ('wo : ',end='')
+        print (self.wo.shape)"""
+        wo_grad += dzj.dot(ah.T)
 
         ai = self.ai.reshape(len(self.ai),1).T
-        dyi = dyi.reshape(dyi.shape[0], 1)
-        wh_grad += dyi.dot(ai)
-        """for i in range(self.nh):
-            for j in range(self.ni):
-				change = dyi[i] * x[j]
-				self.wh[i][j] = 0.01 * change #+ M * self.ch[i][j]
-				self.ch[i][j] = change"""
+        wh_grad += dyi[0:self.nh].dot(ai)
 
-    def train(self, x, y, alpha=0.0005, epochs=24, batch=100):
+    def train(self, x, y, lr=0.01, epochs=24, batch=100):
         print("Training Network")
-        xtrain = x[:int(len(x)*.7)]
-        ytrain = y[:int(len(y)*.7)]
-        xtest = x[int(len(x)*.7)::]
-        ytest = y[int(len(x)*.7)::]
+        xtrain = x[:int(len(x)*.6)]
+        ytrain = y[:int(len(y)*.6)]
+        xval = x[int(len(x)*.6):int(len(x) * .9):]
+        yval = y[int(len(x)*.6):int(len(x) * .9):]
+        xtest = x[int(len(x) * .9):]
+        ytest = x[int(len(x) * .9):]
+
         for i in range(epochs):
-			print (str(i+1) + "/" + str(epochs) + " Epochs")
-			wh_grad = np.zeros((self.nh,self.ni+1))
-			wo_grad = np.zeros((self.no,self.nh+1))
+			print (str(i+1) + "/" + str(epochs) + " Epochs ")
 			for i in range(len(xtrain)):
 				print (str(i) + "/" + str(len(xtrain)), end="\r")
+				wh_grad = np.zeros((self.nh,self.ni+1))
+				wo_grad = np.zeros((self.no,self.nh+1))
 				self.bp(xtrain[i], ytrain[i], wh_grad, wo_grad)
-			self.wh += -1 * (1/len(xtrain)) * np.multiply(alpha, wh_grad)
-			self.wo += -1 * (1/len(xtrain)) * np.multiply(alpha, wo_grad)
-			#get batch size and bp
+				self.wh += -1 * (1/len(xtrain)) * np.multiply(lr, wh_grad)
+				self.wo += -1 * (1/len(xtrain)) * np.multiply(lr, wo_grad)
+			shuffle = np.random.permutation(xtrain.shape[0])
+			xtrain,ytrain = xtrain[shuffle], ytrain[shuffle]
 			"""mini_batches = [xtrain[i:i+batch] for k in range(0, len(xtrain), batch)]
 			mini_y = [ytrain[i] for i in range(0, len(ytrain), batch)]
 			for mini_batch in mini_batches:
 				self.batch_calculate(mini_batch, mini_y)"""
-        print (self.wh)
-        print (self.ao)
+
         np.savetxt('wh.o', self.wh)
         np.savetxt('wo.o', self.wo)
-        right = wrong = 0
-        for i in range(len(xtest)):
-			out = self.ff(xtest[1])
-			print (np.argmax(out))
-			print (np.argmax(ytest[1])) 
+        self.evaluate(xval, yval)
 
 nn = NN(784, 24, 10)
 print ("Loading Data")
@@ -119,7 +119,8 @@ for i in range(len(trainy)):
 	test[int(trainy[i])] = 1.0
 	ty.append(np.array(test))
 trainy = np.array(ty)
+trainx /= 255.0
 
-nn.train(trainx, trainy, epochs=5)
+nn.train(trainx, trainy, epochs=10)
 
 
