@@ -90,12 +90,12 @@ class NN:
 
     def train(self, x, y, lr=0.01, epochs=24, batch=100):
         print("Training Network")
-        xtrain = x[:int(len(x)*.6)]
-        ytrain = y[:int(len(y)*.6)]
-        xval = x[int(len(x)*.6):int(len(x) * .9):]
-        yval = y[int(len(x)*.6):int(len(x) * .9):]
-        xtest = x[int(len(x) * .9):]
-        ytest = x[int(len(x) * .9):]
+        xtrain = x[:int(len(x)*.7)]
+        ytrain = y[:int(len(y)*.7)]
+        xval = x[int(len(x)*.7):]#int(len(x) * .9):]
+        yval = y[int(len(x)*.7):]#int(len(x) * .9):]
+        #xtest = x[int(len(x) * .9):]
+        #ytest = x[int(len(x) * .9):]
 
         for i in range(epochs):
 			print (str(i+1) + "/" + str(epochs) + " Epochs ")
@@ -116,8 +116,10 @@ class NN:
 nn = NN(784, 24, 10)
 print ("Loading Data")
 dat = pd.read_csv('train.csv', sep=',', header=0).values
+testdat = pd.read_csv('test.csv', sep=',', header=0).values
 trainx = np.array([np.array(i[1::]).astype(float) for i in dat])
 trainy = np.array([float(i[0]) for i in dat])
+testx = np.array([np.array(i).astype(float) for i in testdat])
 
 ty = []
 for i in range(len(trainy)):
@@ -129,4 +131,7 @@ trainx /= 255.0
 
 nn.train(trainx, trainy, epochs=10)
 
-
+results = nn.predict(testx)
+results = pd.DataFrame({'ImageId':[i+1 for i in range(len(testx))], 'Label':results})
+print (results)
+results.to_csv('results.csv', index=False)
