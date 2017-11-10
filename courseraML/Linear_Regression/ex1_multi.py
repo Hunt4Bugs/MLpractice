@@ -32,7 +32,7 @@ def gd(x,y):
 
 def main():
     data = np.genfromtxt('ex1data2.txt', delimiter=',')
-    x,y = data[:,:2], data[:,2]
+    x,y = data[:,:2], data[:,1]
     x,y = x.reshape(len(x),-1), y.reshape(len(y),1)
     #plotData(x,y)
     gd(x,y)
